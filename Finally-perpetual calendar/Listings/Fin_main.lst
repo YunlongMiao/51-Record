@@ -1,0 +1,184 @@
+C51 COMPILER V9.60.0.0   FIN_MAIN                                                          03/19/2022 17:01:55 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE FIN_MAIN
+OBJECT MODULE PLACED IN .\Objects\Fin_main.obj
+COMPILER INVOKED BY: D:\EN\C51\BIN\C51.EXE Fin_main.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings
+                    -\Fin_main.lst) TABS(2) OBJECT(.\Objects\Fin_main.obj)
+
+line level    source
+
+   1          #include"Fin_main.h"
+   2          #include"Fin_12864.h"
+   3          #include"Fin_dht11.h"
+   4          #include"Fin_iic.h"
+   5          #include"Fin_ds1302.h"
+   6          #include"Fin_conversion.h"
+   7          uchar e=0;
+   8          bit w = 0; //调时标志位
+   9          sss();
+  10          
+  11          
+  12           void Set_time(unsigned char sel);
+  13          
+  14          void main()
+  15          {
+  16   1        uchar e=0,i=0,s=0;
+  17   1        unsigned char c_sun,year_sun,month_sun,day_sun;    
+  18   1       KEY_1 = 1;KEY_2 = 1;KEY_3 = 1;KEY_4 = 1;//初始键盘
+  19   1          Delayms(1500);
+  20   1          initial_12864();     //12864初始化
+  21   1      //    ds1302_initial();
+  22   1      //  Conversion(22,3,1);
+  23   1        P1=0xf;
+  24   1        while(1)
+  25   1          {
+  26   2              Conversion(22,3,1);
+  27   2      //      display_DHT11();
+  28   2      //      read_1302time();
+  29   2      //      display_1302time();
+  30   2      //      sss();
+  31   2            P1=0;
+  32   2          }
+  33   1      
+  34   1      }
+*** WARNING C280 IN LINE 17 OF Fin_main.c: 'c_sun': unreferenced local variable
+*** WARNING C280 IN LINE 17 OF Fin_main.c: 'year_sun': unreferenced local variable
+*** WARNING C280 IN LINE 17 OF Fin_main.c: 'month_sun': unreferenced local variable
+*** WARNING C280 IN LINE 17 OF Fin_main.c: 'day_sun': unreferenced local variable
+  35          
+  36          
+  37          
+  38          
+  39          
+  40          void Set_time(unsigned char sel)//根据选择调整的相应项目加1并写入DS1302
+  41           { 
+  42   1        signed char address,item;
+  43   1        signed char max,mini;
+  44   1        Putstring(0x9d,"调时");
+  45   1        if(sel==5)  {write_data(0x30+6);address=0x82; max=59;mini=0;}    //分钟6
+  46   1        if(sel==4)  {write_data(0x30+5);address=0x84; max=12;mini=1;}    //小时5
+  47   1        if(sel==3)  {write_data(0x30+4);address=0x8a; max=7;mini=1;}    //星期4  
+  48   1        if(sel==2)  {write_data(0x30+3);address=0x86; max=31;mini=1;}    //日3
+  49   1        if(sel==1)  {write_data(0x30+2);address=0x88; max=12;mini=1;}    //月2
+  50   1        if(sel==0)  {write_data(0x30+1);address=0x8c; max=99; mini=0;}    //年1
+C51 COMPILER V9.60.0.0   FIN_MAIN                                                          03/19/2022 17:01:55 PAGE 2   
+
+  51   1        //读取1302某地址上的数值转换成10进制赋给item 
+  52   1        item=((read_1302_byte(address+1))/16)*10 + (read_1302_byte(address+1))%16;
+  53   1          if(KEY_2 == 0)
+  54   1           {
+  55   2            item++;//数加 1  
+  56   2           }
+  57   1          if(KEY_4 == 0)
+  58   1           {
+  59   2            item--;//数减 1 
+  60   2           }
+  61   1        
+  62   1        if(item>max) item=mini;//查看数值有效范围   
+  63   1        if(item<mini) item=max;           
+  64   1        write_1302_byte(0x8e,0x00);//允许写操作
+  65   1        write_1302_byte(address,(item/10)*16+item%10);//转换成16进制写入1302
+  66   1        write_1302_byte(0x8e,0x80);//写保护，禁止写操作 
+  67   1        read_1302time();
+  68   1      
+  69   1      }
+  70          
+  71          sss()
+  72          {
+  73   1      
+  74   1        if (w == 0)   //正常走时
+  75   1        {
+  76   2      //      if(((mm/18)*10+(mm%16))%2==0) 
+  77   2      //      {
+  78   2      //          lcm_w_ss();  
+  79   2      //      }
+  80   2      //      else
+  81   2      //      {
+  82   2      //          lcm_w_nl();
+  83   2      //      }
+  84   2        }
+  85   1        else    //启动调时
+  86   1        {
+  87   2        }
+  88   1      
+  89   1        if (KEY_3 == 0) // 设置时间
+  90   1        {
+  91   2            Delayms(20);     //去抖
+  92   2            if(KEY_3 == 0 && w == 1)  //当是调时状态 本键用于调整下一项
+  93   2            {
+  94   3                e++;
+  95   3                if (e >= 6 )
+  96   3                {
+  97   4                  e = 0;
+  98   4                }
+  99   3                Set_time(e);//调整        
+ 100   3             }
+ 101   2            if(KEY_3 == 0 && w == 0)  //当是正常状态时就进入调时状态
+ 102   2             {
+ 103   3      //          led_b = 1;//
+ 104   3                write_com(0x01);//清屏
+ 105   3                w=1;    //进入调时        
+ 106   3                Set_time(e);//调整
+ 107   3             }
+ 108   2             while(KEY_3 == 0);//等待键松开 
+ 109   2        }
+ 110   1      
+ 111   1        if(KEY_1 == 0) // 当在调时状态时就退出调时
+ 112   1        {
+C51 COMPILER V9.60.0.0   FIN_MAIN                                                          03/19/2022 17:01:55 PAGE 3   
+
+ 113   2            Delayms(20);
+ 114   2            if(KEY_1 == 0 && w == 1)
+ 115   2            {       
+ 116   3                w = 0;    //退出调时
+ 117   3                e = 0;    //“下一项”计数器清0               
+ 118   3             }
+ 119   2            if(KEY_1 == 0 && w == 0)
+ 120   2            {       
+ 121   3                write_com(0x01);//清屏
+ 122   3                while(KEY_1 == 0);//等待键松开  
+ 123   3            }
+ 124   2              write_com(0x01);//清屏
+ 125   2              read_1302time();
+ 126   2            while(KEY_1 == 0);//等待键松开  
+ 127   2        }
+ 128   1      
+ 129   1        if (KEY_2 == 0 && w == 1)// 加减调整
+ 130   1        {
+ 131   2            Delayms(20);
+ 132   2            if(KEY_2 == 0 && w == 1)
+ 133   2            {       
+ 134   3                Set_time(e);//调整
+ 135   3            }
+ 136   2            while(KEY_2 == 0);//等待键松开
+ 137   2        }
+ 138   1      
+ 139   1        if (KEY_4 == 0 && w == 1) // 加减调整 
+ 140   1        {       
+ 141   2            Delayms(20);  
+ 142   2            if(KEY_4 == 0 && w == 1)
+ 143   2            {       
+ 144   3                Set_time(e);//调整
+ 145   3            }
+ 146   2            while(KEY_4 == 0);//等待键松开 
+ 147   2        }
+ 148   1      
+ 149   1      }
+ 150          
+ 151          
+*** WARNING C290 IN LINE 149 OF Fin_main.c: missing return value
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    547    ----
+   CONSTANT SIZE    =      5    ----
+   XDATA SIZE       =      1      12
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  5 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,231 @@
+C51 COMPILER V9.60.0.0   FIN_CONVERSION                                                    03/19/2022 17:01:55 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE FIN_CONVERSION
+OBJECT MODULE PLACED IN .\Objects\Fin_conversion.obj
+COMPILER INVOKED BY: D:\EN\C51\BIN\C51.EXE Fin_conversion.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Li
+                    -stings\Fin_conversion.lst) TABS(2) OBJECT(.\Objects\Fin_conversion.obj)
+
+line level    source
+
+   1          #include"Fin_conversion.h"
+   2          #include"Fin_12864.h"
+   3          #include"Fin_iic.h"
+   4          /****************************************************/
+   5          /* 获取当前日期的农历及星期*/
+   6          /****************************************************/
+   7          /*==================================================*/
+   8          /*公历年对应的农历数据,每年三字节, 格式: */
+   9          /*第一字节BIT7-4 位表示闰月月份,值为0 为无闰月, */
+  10          /*BIT3-0 对应农历第1-4 月的大小*/
+  11          /*第二字节BIT7-0 对应农历第5-12 月大小, */
+  12          /*第三字节BIT7 表示农历第13 个月大小月份对应的位*/
+  13          /*为1 表示本农历月大(30 天),为0 表示小(29 天) */
+  14          /*第三字节BIT6-5 表示春节的公历月份,BIT4-0 表示春节的公历日期*/
+  15          /*类型:Byte:unsigned char Word:unsigned int */
+  16          /*本代码中Tim[0]/Tim[1]/Tim[2]分别为当前年月日数据*/
+  17          /*其中Tim[0]Bit7 表示世纪,1 为20 世纪19xx,0 为21 世纪20xx*/
+  18          /*Tim[10]为周数据/Tim[7]/Tim[8]/Tim[9]为农历数据,根据需要自行更换*/
+  19          /*==================================================*/
+  20          /*---------------------------------公历转换阴历年份数据表--------------------------------*/
+  21          
+  22          /*天干地支名称*/
+  23            uchar cTianGanDiZhi[12] = {"甲子","乙丑","丙寅","丁卯","戊辰","庚午","辛未",
+*** ERROR C243 IN LINE 23 OF Fin_conversion.c: 'array[]': string out of bounds
+  24                        "壬申","癸酉","甲戌","乙亥","丙子"};//12-1
+  25          
+  26           /*属相名称*/
+  27            uchar cShuXiang[] = {"龙","蛇","马","羊","猴","鸡",
+  28                        "狗","猪","鼠","牛","虎","兔"};//12-1
+  29           /*农历日期名*/
+  30            uchar cDayName[] = {"*","初一","初二","初三","初四","初五",
+  31                         "初六","初七","初八","初九","初十",
+  32                         "十一","十二","十三","十四","十五",
+  33                         "十六","十七","十八","十九","二十",
+  34                         "廿一","廿二","廿三","廿四","廿五",       
+  35                         "廿六","廿七","廿八","廿九","三十"}; //31-1
+  36          
+  37           /*农历月份名*/
+  38            uchar cMonName[] = {"*","正","二","三","四","五","六",//13-1
+  39                         "七","八","九","十","十一","腊"};
+  40          
+  41          unsigned char shuju[7];   //从1302读取的数据
+  42          //月份天数数据表
+  43          uchar code day_code1[9]={0x0,0x1f,0x3b,0x5a,0x78,0x97,0xb5,0xd4,0xf3};
+  44          uchar code day_code2[3]={0x111,0x130,0x14e};
+  45          //月修正数据表
+  46          uchar code table_week[12]={0,3,3,6,1,4,6,2,5,0,3,5};
+  47          uchar c_moon,year_moon,month_moon,day_moon;
+  48          uchar GetMoonDay(unsigned char month_p,unsigned short table_addr)
+  49          /*读取数据表中农历月的大月或小月,如果该月大返回1,小返回0*/
+  50          {
+  51   1        switch (month_p)
+  52   1        {
+  53   2          case 1:
+C51 COMPILER V9.60.0.0   FIN_CONVERSION                                                    03/19/2022 17:01:55 PAGE 2   
+
+  54   2            if((year_code(table_addr)&0x08)==0)   return(0);
+  55   2            else                  return(1); 
+  56   2          case 2:
+  57   2            if((year_code(table_addr)&0x04)==0)   return(0);
+  58   2            else                  return(1);
+  59   2          case 3:
+  60   2            if((year_code(table_addr)&0x02)==0)   return(0);
+  61   2            else                  return(1);
+  62   2          case 4:
+  63   2            if((year_code(table_addr)&0x01)==0)   return(0);
+  64   2            else                    return(1);
+  65   2          case 5:
+  66   2            if((year_code(table_addr)&0x80)==0) return(0);
+  67   2            else                  return(1);
+  68   2          case 6:
+  69   2            if((year_code(table_addr)&0x40)==0) return(0);
+  70   2            else                  return(1);
+  71   2          case 7:
+  72   2            if((year_code(table_addr+1)&0x20)==0) return(0);
+  73   2            else                  return(1);
+  74   2          case 8:
+  75   2            if((year_code(table_addr+1)&0x10)==0) return(0);
+  76   2            else                  return(1);
+  77   2          case 9:
+  78   2            if((year_code(table_addr+1)&0x08)==0) return(0);
+  79   2            else                  return(1);
+  80   2          case 10:
+  81   2            if((year_code(table_addr+1)&0x04)==0) return(0);
+  82   2            else                  return(1);
+  83   2          case 11:
+  84   2            if((year_code(table_addr+1)&0x02)==0) return(0);
+  85   2            else                  return(1);
+  86   2          case 12:
+  87   2            if((year_code(table_addr+1)&0x01)==0) return(0);
+  88   2            else                  return(1);
+  89   2          case 13:
+  90   2            if((year_code(table_addr+2)&0x80)==0) return(0);
+  91   2            else                  return(1);
+  92   2        }
+  93   1        return(0);
+  94   1      }
+  95          /*--------------------------------公历转农历函数-----------------------------------------*/
+  96          
+  97          void Conversion(uchar year,uchar month,uchar day)
+  98          {                         
+  99   1        uchar temp1,temp2,temp3,month_p;
+ 100   1        uint temp4,table_addr;
+ 101   1        bit flag2,flag_y,c; 
+ 102   1          table_addr=(year+0x64-1)*0x3;  //定位数据表地址
+ 103   1        temp1=year_code(table_addr+2)&0x60; //取当年春节所在的公历月份
+ 104   1        temp1=_cror_(temp1,5);
+ 105   1        temp2=year_code(table_addr+2)&0x1f; //取当年春节所在的公历日
+ 106   1        //取当年春节所在的公历日完成 
+ 107   1        //计算当年春年离当年元旦的天数,春节只会在公历1月或2月 
+ 108   1        if(temp1==0x1)  { temp3=temp2-1; }  
+ 109   1          else      { temp3=temp2+0x1f-1; }
+ 110   1      
+ 111   1        // 计算当年春年离当年元旦的天数完成 
+ 112   1        //计算公历日离当年元旦的天数,为了减少运算,用了两个表 
+ 113   1        //day_code1[9],day_code2[3] 
+ 114   1        //如果公历月在九月或前,天数会少于0xff,用表day_code1[9], 
+ 115   1        //在九月后,天数大于0xff,用表day_code2[3] 
+C51 COMPILER V9.60.0.0   FIN_CONVERSION                                                    03/19/2022 17:01:55 PAGE 3   
+
+ 116   1        //如输入公历日为8月10日,则公历日离元旦天数为day_code1[8-1]+10-1 
+ 117   1        //如输入公历日为11月10日,则公历日离元旦天数为day_code2[11-10]+10-1 
+ 118   1        if(month<10)  { temp4=day_code1[month-1]+day-1; }
+ 119   1          else      { temp4=day_code2[month-10]+day-1;}
+ 120   1      
+ 121   1      //  if ((month>0x2)&&(year%0x4==0)&&(year!=0)) //此语句造成2000年3月1日—12月31日之间
+ 122   1                              //计算农历少算一天，应删除判断语句“&&(year!=0)”
+ 123   1        if ((month>0x2)&&(year%0x4==0))
+ 124   1          temp4+=1; //如果公历月大于2月并且该年的2月为闰月,天数加1
+ 125   1        //计算公历日离当年元旦的天数完成 
+ 126   1         
+ 127   1        //判断公历日在春节前还是春节后
+ 128   1        if (temp4>=temp3)
+ 129   1        { 
+ 130   2          temp4-=temp3; month=0x1;
+ 131   2          month_p=0x1;  //month_p为月份指向,公历日在春节前或就是春节当日month_p指向首月
+ 132   2          flag2=GetMoonDay(month_p,table_addr); //检查该农历月为大小还是小月,大月返回1,小月返回0
+ 133   2          flag_y=0;
+ 134   2            if(flag2==0)temp1=0x1d;   //小月29天
+ 135   2              else    temp1=0x1e;    //大月30天
+ 136   2          temp2=year_code(table_addr)&0xf0;
+ 137   2          temp2=_cror_(temp2,4);  //从数据表中取该年的闰月月份,如为0则该年无闰月
+ 138   2          while(temp4>=temp1)
+ 139   2          {
+ 140   3            temp4-=temp1; month_p+=1;
+ 141   3            if(month==temp2)
+ 142   3              {
+ 143   4              flag_y=~flag_y;
+ 144   4                if(flag_y==0)month+=1;
+ 145   4            }
+ 146   3            else month+=1;
+ 147   3            flag2=GetMoonDay(month_p,table_addr);
+ 148   3               if(flag2==0)temp1=0x1d;
+ 149   3                else    temp1=0x1e;
+ 150   3          }
+ 151   2          day=temp4+1;
+ 152   2        }
+ 153   1        else
+ 154   1        {  
+ 155   2          temp3-=temp4;
+ 156   2          if (year==0x0){year=0x63;c=1;}
+ 157   2            else  year-=1;
+ 158   2          table_addr-=0x3;
+ 159   2          month=0xc;
+ 160   2          temp2=year_code(table_addr)&0xf0;
+ 161   2          temp2=_cror_(temp2,4);
+ 162   2          if (temp2==0)month_p=0xc; 
+ 163   2            else  month_p=0xd; 
+ 164   2          flag_y=0;
+ 165   2          flag2=GetMoonDay(month_p,table_addr);
+ 166   2          if(flag2==0)temp1=0x1d;
+ 167   2              else  temp1=0x1e;
+ 168   2          while(temp3>temp1)
+ 169   2          {
+ 170   3            temp3-=temp1;
+ 171   3            month_p-=1;
+ 172   3            if(flag_y==0)month-=1;
+ 173   3               if(month==temp2)flag_y=~flag_y;
+ 174   3               flag2=GetMoonDay(month_p,table_addr);
+ 175   3               if(flag2==0)temp1=0x1d;
+ 176   3                  else  temp1=0x1e;
+ 177   3          }
+C51 COMPILER V9.60.0.0   FIN_CONVERSION                                                    03/19/2022 17:01:55 PAGE 4   
+
+ 178   2          day=temp1-temp3+1;
+ 179   2        }
+ 180   1        
+ 181   1          c_moon=c;
+ 182   1          year_moon=year;
+ 183   1          month_moon=month;
+ 184   1          day_moon=day;
+ 185   1      //      Show_number(0x88,year_moon);
+ 186   1      //      Show_number(0x8a,month_moon);
+ 187   1      //      Show_number(0x8c,day_moon);
+ 188   1      //      Putstring(0x90,cTianGanDiZhi[year_moon%60-8]);
+ 189   1            Putstring(0x92,cShuXiang[year_moon%12]);
+ 190   1            Putstring(0x94,cMonName[month_moon]);
+ 191   1            Putstring(0x96,cDayName[day_moon]);
+ 192   1      }
+ 193          
+ 194          
+ 195          
+ 196                
+ 197                
+ 198                
+ 199                
+ 200                
+ 201                
+ 202                
+ 203                
+ 204                
+ 205                
+ 206                
+ 207                
+ 208                
+ 209                
+ 210                
+ 211                
+ 212                
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  1 ERROR(S)

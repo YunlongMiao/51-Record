@@ -1,0 +1,6 @@
+".\Objects\Fin_12864.obj",
+".\Objects\Fin_iic.obj",
+".\Objects\Fin_main.obj",
+".\Objects\Fin_conversion.obj" 
+TO ".\Objects\Text" 
+PRINT(".\Listings\Text.m51") RAMSIZE(256) 

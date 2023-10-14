@@ -1,0 +1,128 @@
+C51 COMPILER V9.60.0.0   FIN_12864                                                         03/19/2022 17:01:55 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE FIN_12864
+OBJECT MODULE PLACED IN .\Objects\Fin_12864.obj
+COMPILER INVOKED BY: D:\EN\C51\BIN\C51.EXE Fin_12864.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listing
+                    -s\Fin_12864.lst) TABS(2) OBJECT(.\Objects\Fin_12864.obj)
+
+line level    source
+
+   1          #include "Fin_12864.h"
+   2          #include"Fin_iic.h"
+   3          
+   4          
+   5          void Delayms(uint n)    //ÑÓÊ±Ê±¼äÎª 1ms * x ¾§ÕñÊÇ11.0592M
+   6          {
+   7   1        unsigned int i, j;
+   8   1        for (i = n; i > 0; i--)
+   9   1          for (j = 110; j > 0; j--);
+  10   1      }
+  11          
+  12          
+  13          
+  14          void LCD_sendbyte(uchar dat) //½«8Î»¶ş½øÖÆÊıÖğÎ»Ğ´Èë
+  15          {
+  16   1        unsigned char i;
+  17   1        for (i = 0; i < 8; i++) {
+  18   2          SCLK = 0;
+  19   2          if (dat & 0x80)
+  20   2            SID = 1;
+  21   2          else
+  22   2            SID = 0;
+  23   2          SCLK = 1;
+  24   2          dat = dat << 1;     //×óÒÆÒ»Î»
+  25   2        }
+  26   1      }
+  27          
+  28          
+  29          
+  30          
+  31          void write_com(uchar com) //Ğ´ÈëÃüÁî
+  32          {
+  33   1        LCD_sendbyte(0xf8);          //ËÍÈë5¸öÁ¬ĞøµÄ¡°1¡°£¬Æô¶¯Ò»¸öÖÜÆÚ,11111,RW(0),RS(0),0
+  34   1        LCD_sendbyte(0xf0 & com);    //È¡¸ßËÄÎ»£¬Êı¾İ·ÖÁ½´Î´«ËÍ£¬Ã¿¸ö×Ö½ÚµÄÄÚÈİ±»ËÍÈëÁ½¸ö×Ö½Ú,¸ßËÄÎ»·ÅÔÚµÚÒ»¸ö×Ö½
+             -ÚµÄ¸ßËÄÎ»
+  35   1        LCD_sendbyte(0xf0 & (com << 4)); //µÍËÄÎ»·ÅÔÚµÚ¶ş¸ö×Ö½ÚµÄ¸ßËÄÎ»
+  36   1        Delayms(1);                   //´®ĞĞ²»Ö§³Ö¶Á²Ù×÷£¬²»¿É¼ì²âÃ¦²Ù×÷£¬ÕâÀïÓÃÑÓÊ±Ìæ´ú
+  37   1      }
+  38          
+  39          
+  40          
+  41          
+  42          void write_data(uchar dat) //Ğ´ÈëÊı¾İ
+  43          {
+  44   1        LCD_sendbyte(0xfa);
+  45   1        LCD_sendbyte(0xf0 & dat);
+  46   1        LCD_sendbyte(0xf0 & (dat << 4));
+  47   1        Delayms(1);
+  48   1      }
+  49          
+  50          
+  51          
+  52          
+  53          void initial_12864()//LCD³õÊ¼»¯
+C51 COMPILER V9.60.0.0   FIN_12864                                                         03/19/2022 17:01:55 PAGE 2   
+
+  54          {
+  55   1        write_com(0x30);    //Ñ¡Ôñ»ù±¾Ö¸Áî¼¯
+  56   1        write_com(0x0c);    //¿ªÏÔÊ¾£¬ÎŞÓÎ±ê£¬²»·´°×
+  57   1        write_com(0x01);    //Çå³ıÏÔÊ¾ÆÁÄ»£¬°ÑDDRAMÎ»Ö·¼ÆÊıÆ÷µ÷ÕûÎª00H
+  58   1        Delayms(1);            //ÇåÆÁ²Ù×÷Ê±¼ä½Ï³¤1.6ms Òò´Ë¼Ó´ËÑÓÊ±
+  59   1        write_com(0x02);    //ÇåDDRAMÎ»Ö·¹éÎ»,´Ë´¦Ã²ËÆÓëÇåÆÁÖØ¸´
+  60   1        write_com(0x06);    //Éè¶¨¹â±êÓÒÒÆ£¬ÕûÌåÏÔÊ¾²»ÒÆ¶¯
+  61   1      }
+  62          
+  63          
+  64          
+  65          //void LCD_Setaddress(uchar x, uchar y)  //LCDÆÁÄ»µØÖ·¶¨Î»,µØÖ·´ÓµÚ1ĞĞµÚ1ÁĞ¿ªÊ¼²»´Ó0¿ªÊ¼£¨y£©
+  66          //{
+  67          //  uchar addr;
+  68          //  switch (x) {
+  69          //    case 1:
+  70          //      addr = 0x80 + y;
+  71          //      break;
+  72          //    case 2:
+  73          //      addr = 0x90 + y;
+  74          //      break;
+  75          //    case 3:
+  76          //      addr = 0x88 + y;
+  77          //      break;
+  78          //    case 4:
+  79          //      addr = 0x98 + y;
+  80          //      break;
+  81          //    default :
+  82          //      break;
+  83          //  }
+  84          //  write_com(addr);   //×Ö·ûÏÔÊ¾¿ªÊ¼µØÖ·
+  85          //}
+  86          
+  87          
+  88          
+  89          void Putstring(uchar addr,uchar *pData ) //LCDÏÔÊ¾×Ö·ûÊı×é£¨ÎÄ×Ö£©
+  90          {
+  91   1          write_com(addr);
+  92   1          while (*pData) 
+  93   1            write_data( *pData++ );
+  94   1      
+  95   1      }
+  96          void Show_number(uchar addr,uint num)   //ÏÔÊ¾Êı×Ö
+  97          {
+  98   1        char s[6];
+  99   1        sprintf(s,"%-05d",num);
+ 100   1        Putstring(addr , s);
+ 101   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    245    ----
+   CONSTANT SIZE    =      6    ----
+   XDATA SIZE       =   ----      10
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
